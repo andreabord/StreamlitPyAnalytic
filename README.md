@@ -6,38 +6,31 @@ Documentação do site e do código do dashboard público de saúde do **PyAnaly
 
 ## O que é
 
-Portal web em **Streamlit** que transforma dados públicos do **SIM** (Sistema de Informações sobre Mortalidade) em painéis legíveis para população, gestores e comunidade acadêmica.
-
-Foco atual: **óbitos de residentes de Araranguá (SC)**.
+Portal web em **Streamlit** com bases públicas de saúde de **Araranguá (SC)**: mortalidade (SIM), medicamentos e vacinações.
 
 | Item | Valor |
 |---|---|
-| Entrada | `streamlit/app.py` |
-| Dados | `data/processed/sim_sc_processado_analitico.csv` |
-| Filtro | `CODMUNRES` = `420140` (Araranguá) |
+| Entrada | `app.py` |
+| Dados SIM | `data/processed/sim_sc_processado_analitico.part*.csv` |
+| Dados medicamentos | `data/processed/dispensacao_analitico.csv` |
 | Stack | Streamlit · Pandas · Plotly |
 
 ---
 
 ## Como rodar
 
-Na **raiz do repositório**:
+Na **raiz deste repositório** (`StreamlitPA`):
 
 ```bash
-# Ambiente (recomendado)
 python -m venv .venv
 source .venv/bin/activate
-
-# Dependências
 pip install -r requirements.txt
-
-# Subir o portal
-streamlit run streamlit/app.py
+streamlit run app.py
 ```
 
 Abre em [http://localhost:8501](http://localhost:8501).
 
-**Pré-requisito:** o CSV do SIM em `data/processed/sim_sc_processado_analitico.csv`. Sem ele, as páginas de dados falham com mensagem clara.
+**Pré-requisito:** CSVs do SIM (partes) e, para Medicamentos, `dispensacao_analitico.csv` em `data/processed/`.
 
 ---
 
@@ -45,14 +38,21 @@ Abre em [http://localhost:8501](http://localhost:8501).
 
 | URL | Página | Status |
 |---|---|---|
-| `/inicio` | Home — KPIs e atalhos | Pronto |
+| `/` | Home — KPIs SIM + Medicamentos | Pronto |
 | `/sobre` | Sobre o PyAnalytics | Pronto |
-| `/sim` | Hub da base SIM | Pronto |
-| `/retrato` | Retrato da mortalidade no município | Pronto |
-| `/evitavel` | Mortalidade evitável | Em breve |
-| `/materna` | Saúde materna e infantil | Em breve |
-| `/onde-morrem` | Onde as pessoas morrem | Em breve |
-| `/violentas` | Mortes violentas | Em breve |
+| `/sim` | Hub SIM (Mortalidade) | Pronto |
+| `/sim?tema=retrato` | Retrato da mortalidade | Pronto |
+| `/sim?tema=evitavel` | Mortalidade evitável | Pronto |
+| `/sim?tema=onde-morrem` | Óbitos por local | Pronto |
+| `/sim?tema=violentas` | Mortes violentas | Pronto |
+| `/sim?tema=materna` | Saúde materna e infantil | Pronto |
+| `/medicamentos` | Hub Medicamentos | Pronto |
+| `/medicamentos?tema=tempo` | Dispensação no tempo | Em breve |
+| `/medicamentos?tema=destaques` | Medicamentos em destaque | Pronto |
+| `/medicamentos?tema=bairro-cc` | Bairros e centros de custo | Pronto |
+| `/medicamentos?tema=perfis` | Perfis de cuidado | Em breve |
+| `/medicamentos?tema=custos` | Custos das dispensações | Pronto |
+| `/vacinas` | Hub Vacinações | Em breve |
 
 Navegação nativa do Streamlit fica **oculta**. O usuário usa:
 
