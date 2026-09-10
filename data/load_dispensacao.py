@@ -14,6 +14,8 @@ COLS = (
     "saida",
     "material_nome_base",
     "material_nome",
+    "material_tipo",
+    "material_descricao_complementar",
     "classe_terapeutica",
     "tipo_tratamento",
     "fabricante_nome",
