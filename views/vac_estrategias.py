@@ -14,8 +14,8 @@ def render() -> None:
         "Quais estratégias de vacinação aparecem?",
         f"Araranguá · {periodo} · {len(df):,} registros".replace(",", "."),
         "vacinas",
+        total_descobertas=3,
     )
     secao("Frequência das estratégias", graficos.ranking_estrategias(df, periodo))
     secao("No tempo", graficos.evolucao_estrategias(df, periodo))
     secao("Vacina × estratégia", graficos.cruzamento_vacina_estrategia(df, periodo))
-    secao("Estratégias menos frequentes", graficos.estrategias_raras(df, periodo))

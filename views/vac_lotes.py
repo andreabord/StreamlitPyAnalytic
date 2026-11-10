@@ -14,6 +14,7 @@ def render() -> None:
         "O que lotes e validades revelam?",
         f"Araranguá · {periodo} · {len(df):,} registros".replace(",", "."),
         "vacinas",
+        total_descobertas=4,
     )
     secao("Diversidade por vacina", graficos.diversidade_lotes_vacina(df, periodo))
     secao("Diversidade por bairro", graficos.diversidade_lotes_bairro(df, periodo))

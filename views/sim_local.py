@@ -14,6 +14,7 @@ def render() -> None:
         "Óbitos por local de ocorrência",
         f"Ocorrência em SC · {periodo_txt} · {len(sc)} óbitos "
         f"(Araranguá: {len(ara)} · Tubarão: {len(tub)})",
+        total_descobertas=11,
     )
     _sc(sc, periodo_txt)
     _comparativo(sc, ara, tub, periodo_txt)
@@ -29,8 +30,8 @@ def _sc(sc, periodo_txt: str) -> None:
 
 
 def _comparativo(sc, ara, tub, periodo_txt: str) -> None:
-    """Gráficos 6 a 9: Araranguá × Tubarão × SC."""
+    """Comparativos Ara × Tubarão × SC (idade vira 3 capítulos)."""
     secao("Araranguá × Tubarão × SC", graficos.comparativo_local(ara, tub, sc, periodo_txt))
-    secao("Idade em Araranguá vs SC", graficos.idade_ara_vs_sc(ara, sc, periodo_txt))
+    secao("Idade em Araranguá vs SC", *graficos.idade_ara_vs_sc(ara, sc, periodo_txt))
     secao("Amparo médico comparativo", graficos.assistmed_comparativo(ara, tub, sc, periodo_txt))
     secao("Óbitos normalizados pela população", graficos.taxa_populacao(ara, tub, sc, periodo_txt))

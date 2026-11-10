@@ -14,6 +14,7 @@ def render() -> None:
         "Quais medicamentos se destacam nas dispensações?",
         f"Farmácia Básica · {periodo} · {len(df):,} registros",
         "medicamentos",
+        total_descobertas=11,
     )
     secao("Ranking de saídas", graficos.top_saidas(df, periodo))
     secao("Ranking de quantidade", graficos.top_quantidade(df, periodo))

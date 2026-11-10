@@ -14,6 +14,7 @@ def render() -> None:
         "Quais vacinas se destacam nas aplicações?",
         f"Araranguá · {periodo} · {len(df):,} registros".replace(",", "."),
         "vacinas",
+        total_descobertas=4,
     )
     secao("Ranking de aplicações", graficos.ranking_vacinas(df, periodo))
     secao("Concentração", graficos.concentracao(df, periodo))

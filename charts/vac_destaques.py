@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from charts.theme import pizza
-from charts.texto import insight_top
+from charts.texto import historia_volume
 from charts.vac_common import com_data, ranking_barras, serie_mensal_grupo, linhas_por_grupo
 
 
@@ -20,7 +20,7 @@ def concentracao(df: pd.DataFrame, periodo: str):
     col = _col_vacina(df)
     serie = com_data(df)[col].value_counts()
     fig = pizza(serie, f"Concentração das aplicações por vacina — {periodo}", top=6)
-    return fig, insight_top(serie)
+    return fig, historia_volume(int(serie.sum()), periodo, serie, "aplicações")
 
 
 def ranking_por_estrategia(df: pd.DataFrame, periodo: str):

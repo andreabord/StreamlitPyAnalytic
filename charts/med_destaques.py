@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 
-from charts.texto import insight_top, vazio
+from charts.texto import historia_volume, n_br, vazio
 from charts.theme import PALETTE, abrevia, apply_layout, bar_horizontal, dispersao, heatmap
 from data.prepare_med import meses_completos
 
@@ -19,27 +19,40 @@ _CLASSES_SAZON = (
 
 
 def top_saidas(df: pd.DataFrame, periodo: str):
-    """Top 20 medicamentos por número de saídas."""
-    serie = df["material_nome_base"].value_counts().head(20)
-    if serie.empty:
+    """Top 10 medicamentos mais dispensados, com história alinhada aos dados."""
+    bruto = df["material_nome_base"].value_counts().head(10)
+    if bruto.empty:
         return vazio()
+    total = int(df["material_nome_base"].value_counts().sum())
+    lider, segundo, terceiro = bruto.index[0], bruto.index[1], bruto.index[2]
+    n1, n2, n3 = int(bruto.iloc[0]), int(bruto.iloc[1]), int(bruto.iloc[2])
+    pct_lider = 100 * n1 / total if total else 0
+    pct_top = 100 * bruto.sum() / total if total else 0
+    serie = bruto.copy()
     serie.index = [abrevia(i, 40) for i in serie.index]
-    fig = bar_horizontal(serie, f"Top 20 medicamentos por saídas — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    fig = bar_horizontal(
+        serie, f"Top 10 medicamentos mais dispensados — {periodo}", mostrar_pct=False
+    )
+    insight = (
+        f"O {lider.lower()} foi o mais dispensado ({n1:,}; {pct_lider:.1f}% do total), "
+        f"seguido do {segundo.lower()} ({n2:,}) e da {terceiro.lower()} ({n3:,}). "
+        f"Os 10 primeiros juntos somam {pct_top:.1f}% das dispensações."
+    ).replace(",", ".")
+    return fig, insight
 
 
 def top_quantidade(df: pd.DataFrame, periodo: str):
     """Top 20 medicamentos por quantidade total."""
-    serie = (
-        df.groupby("material_nome_base")["quantidade"].sum().sort_values(ascending=False).head(20)
-    )
+    bruto = df.groupby("material_nome_base")["quantidade"].sum().sort_values(ascending=False)
+    serie = bruto.head(20)
     if serie.empty:
         return vazio()
-    serie.index = [abrevia(i, 40) for i in serie.index]
+    plot = serie.copy()
+    plot.index = [abrevia(i, 40) for i in plot.index]
     fig = bar_horizontal(
-        serie, f"Top 20 medicamentos por quantidade — {periodo}", mostrar_pct=False
+        plot, f"Top 20 medicamentos por quantidade — {periodo}", mostrar_pct=False
     )
-    return fig, insight_top(serie, "Volume alto ≠ mais saídas (protocolos longos).")
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "unidades dispensadas")
 
 
 def comparacao_rankings(df: pd.DataFrame, periodo: str):
@@ -65,7 +78,10 @@ def comparacao_rankings(df: pd.DataFrame, periodo: str):
         "Posição em saídas (1 = mais)",
         "Posição em quantidade (1 = mais)",
     )
-    return fig, "Pontos longe da diagonal: frequente em pouca quantidade ou o contrário."
+    return fig, (
+        f"No período {periodo}, cada ponto é um medicamento do top 20 em saídas. "
+        "Pontos longe da diagonal saem muito em pouca quantidade ou o contrário."
+    )
 
 
 def evolucao_top5(df: pd.DataFrame, periodo: str):
@@ -91,53 +107,66 @@ def evolucao_top5(df: pd.DataFrame, periodo: str):
             line=dict(color=PALETTE[i % len(PALETTE)]),
         )
     fig = apply_layout(fig, f"Evolução mensal — Top 5 medicamentos · {periodo}")
-    return fig, "Compare a estabilidade dos itens crônicos ao longo do ano."
+    nomes = ", ".join(f'"{abrevia(str(m), 28)}"' for m in top5)
+    return fig, (
+        f"No período {periodo}, o gráfico acompanha os 5 medicamentos com mais saídas: "
+        f"{nomes}."
+    )
 
 
 def tipos_tratamento(df: pd.DataFrame, periodo: str):
     """Volume por tipo de tratamento."""
-    serie = df["tipo_tratamento"].fillna("Não informado").value_counts().head(12)
+    bruto = df["tipo_tratamento"].fillna("Não informado").value_counts()
+    serie = bruto.head(12)
     if serie.empty:
         return vazio()
-    serie.index = [abrevia(i, 40) for i in serie.index]
-    fig = bar_horizontal(serie, f"Tipos de tratamento — {periodo}")
-    return fig, insight_top(serie)
+    plot = serie.copy()
+    plot.index = [abrevia(i, 40) for i in plot.index]
+    fig = bar_horizontal(plot, f"Tipos de tratamento — {periodo}")
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "saídas por tipo de tratamento")
 
 
 def tipos_apresentacao(df: pd.DataFrame, periodo: str):
     """Tipos de apresentação (comprimido, frasco etc.)."""
     if "material_tipo" not in df.columns:
         return vazio("Sem coluna de tipo de apresentação.")
-    serie = df["material_tipo"].fillna("Não informado").value_counts().head(15)
+    bruto = df["material_tipo"].fillna("Não informado").value_counts()
+    serie = bruto.head(15)
     if serie.empty:
         return vazio()
-    serie.index = [abrevia(i, 40) for i in serie.index]
-    fig = bar_horizontal(serie, f"Tipos de apresentação — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    plot = serie.copy()
+    plot.index = [abrevia(i, 40) for i in plot.index]
+    fig = bar_horizontal(plot, f"Tipos de apresentação — {periodo}", mostrar_pct=False)
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "saídas por apresentação")
 
 
 def top_apresentacoes(df: pd.DataFrame, periodo: str):
     """Top 20 apresentações completas (nome + dose + tipo)."""
-    serie = df["apresentacao_completa"].value_counts().head(20)
+    bruto = df["apresentacao_completa"].value_counts()
+    serie = bruto.head(20)
     if serie.empty:
         return vazio()
-    serie.index = [abrevia(i, 48) for i in serie.index]
-    fig = bar_horizontal(serie, f"Top 20 apresentações completas — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    plot = serie.copy()
+    plot.index = [abrevia(i, 48) for i in plot.index]
+    fig = bar_horizontal(plot, f"Top 20 apresentações completas — {periodo}", mostrar_pct=False)
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "saídas por apresentação completa")
 
 
 def top_bairros_saidas(df: pd.DataFrame, periodo: str):
     """Top 15 bairros por número de saídas."""
     base = df.loc[~df["bairro_malformado"]]
-    serie = base["bairro_padronizado"].value_counts().head(15)
+    bruto = base["bairro_padronizado"].value_counts()
+    serie = bruto.head(15)
     if serie.empty:
         return vazio()
     fig = bar_horizontal(serie, f"Top 15 bairros por saídas — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "saídas por bairro")
 
 
 def media_quantidade(df: pd.DataFrame, periodo: str):
     """Média de quantidade por saída — universo = top 20 por saídas."""
+    from charts.texto import _num
+
     top20 = df["material_nome_base"].value_counts().head(20).index
     media = (
         df.loc[df["material_nome_base"].isin(top20)]
@@ -148,11 +177,17 @@ def media_quantidade(df: pd.DataFrame, periodo: str):
     )
     if media.empty:
         return vazio()
-    media.index = [abrevia(i, 40) for i in media.index]
+    plot = media.copy()
+    plot.index = [abrevia(i, 40) for i in plot.index]
     fig = bar_horizontal(
-        media, f"Média de quantidade por saída — Top 20 por saídas · {periodo}", mostrar_pct=False
+        plot, f"Média de quantidade por saída — Top 20 por saídas · {periodo}", mostrar_pct=False
     )
-    return fig, insight_top(media, "Protocolos longos elevam a média por atendimento.")
+    lider = str(media.index[0])
+    return fig, (
+        f"Entre os 20 medicamentos com mais saídas ({periodo}), "
+        f'"{lider}" tem a maior média por saída ({_num(float(media.iloc[0]))} un.). '
+        f"A menor média neste recorte é {_num(float(media.iloc[-1]))} un."
+    )
 
 
 def top_meds_por_bairro(df: pd.DataFrame, periodo: str):
@@ -186,33 +221,49 @@ def top_meds_por_bairro(df: pd.DataFrame, periodo: str):
         "YlGnBu",
         cor_legenda="Saídas",
     )
-    return fig, "Cada bairro mostra só seus 5 líderes (células zeradas = fora do top)."
+    return fig, (
+        f"No período {periodo}, cada bairro exibe apenas seus 5 medicamentos líderes em saídas. "
+        "Células zeradas estão fora do top local."
+    )
 
 
 def sazonalidade_tipo(df: pd.DataFrame, periodo: str):
-    """Evolução mensal por tipo de tratamento (lista preferida do notebook)."""
+    """Evolução mensal dos principais tipos de tratamento (texto da auditoria)."""
     base = meses_completos(df).dropna(subset=["tipo_tratamento"])
     if base.empty:
         return vazio("Sem tipo de tratamento preenchido.")
-    existentes = [c for c in _CLASSES_SAZON if c in set(base["tipo_tratamento"])]
-    if not existentes:
-        existentes = base["tipo_tratamento"].value_counts().head(5).index.tolist()
+
     pivot = (
-        base.loc[base["tipo_tratamento"].isin(existentes)]
-        .groupby(["ano_mes", "tipo_tratamento"])
+        base.groupby(["ano_mes", "tipo_tratamento"])
         .size()
         .unstack(fill_value=0)
         .sort_index()
     )
+    top_perfis = base["tipo_tratamento"].value_counts().head(3).index.tolist()
+    pivot_top = pivot[[c for c in top_perfis if c in pivot.columns]]
+
     fig = go.Figure()
-    for i, col in enumerate(pivot.columns):
+    for i, col in enumerate(pivot_top.columns):
         fig.add_scatter(
-            x=pivot.index.astype(str),
-            y=pivot[col],
+            x=pivot_top.index.astype(str),
+            y=pivot_top[col],
             mode="lines+markers",
             name=abrevia(str(col), 28),
             line=dict(color=PALETTE[i % len(PALETTE)], width=1.8),
             marker=dict(size=5),
         )
-    fig = apply_layout(fig, f"Sazonalidade por tipo de tratamento — {periodo}")
-    return fig, "Condições crônicas tendem a curvas mais estáveis."
+    fig = apply_layout(fig, f"Evolução mensal dos principais perfis — {periodo}")
+    if not top_perfis or pivot_top.empty:
+        return fig, f"Evolução mensal dos principais tipos de tratamento ({periodo})."
+    lider = top_perfis[0]
+    nomes = ", ".join(f'"{abrevia(str(c), 28)}"' for c in pivot_top.columns)
+    if lider in pivot_top.columns:
+        serie_lider = pivot_top[lider]
+        return fig, (
+            f"No período {periodo}, o gráfico mostra {len(pivot_top.columns)} perfis: {nomes}. "
+            f'"{abrevia(lider, 28)}" vai de {n_br(int(serie_lider.min()))} a '
+            f"{n_br(int(serie_lider.max()))} dispensações no mês."
+        )
+    return fig, (
+        f"No período {periodo}, o gráfico mostra {len(pivot_top.columns)} perfis: {nomes}."
+    )

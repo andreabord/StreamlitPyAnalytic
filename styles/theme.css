@@ -118,8 +118,7 @@ html:has(.pya-flag-claro) .pya-voltar:visited {
   margin-top: auto !important;
 }
 
-[data-testid="stVerticalBlock"] > div:has(.st-key-pya_drawer),
-[data-testid="stVerticalBlock"] > div:has(.st-key-pya_menu_overlay) {
+[data-testid="stVerticalBlock"] > div:has(.st-key-pya_drawer) {
   height: 0 !important;
   min-height: 0 !important;
   margin: 0 !important;
@@ -301,69 +300,6 @@ div[class*="st-key-pya_drawer"] {
     opacity: 1;
     transform: translateX(0);
   }
-}
-
-.st-key-pya_menu_overlay,
-div[class*="st-key-pya_menu_overlay"] {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 999990 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  min-height: 100vh !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: rgba(17, 24, 39, 0.4) !important;
-  cursor: pointer !important;
-}
-
-.st-key-pya_menu_overlay [data-testid="stVerticalBlock"],
-.st-key-pya_menu_overlay [data-testid="stElementContainer"],
-.st-key-pya_menu_overlay [data-testid="stButton"] {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.st-key-pya_menu_overlay button {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  cursor: pointer !important;
-}
-
-.st-key-pya_menu_overlay button p,
-.st-key-pya_menu_overlay button [data-testid="stMarkdownContainer"] {
-  display: none !important;
-}
-
-body:has(.st-key-pya_drawer) .st-key-header_home {
-  pointer-events: none !important;
-  opacity: 0.35;
-}
-
-.st-key-pya_drawer button {
-  width: 100% !important;
-  justify-content: flex-start !important;
-  text-align: left !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  color: #191c1d !important;
-  font-weight: 500 !important;
-}
-
-.st-key-pya_drawer button:hover {
-  color: #0059bb !important;
-  background: #eef3fb !important;
 }
 
 /* Light mode: nav, drawer e links (evita herdar paleta escura do Streamlit) */
@@ -1400,6 +1336,109 @@ section[data-testid="stSidebar"] > div:first-child {
   margin-top: 1rem !important;
 }
 
+/* Abertura editorial dos hubs: valor primeiro, exploração depois. */
+.hub-hero {
+  max-width: 46rem;
+  margin: 0.9rem 0 1.1rem;
+}
+
+.hub-eyebrow {
+  margin: 0 0 0.35rem !important;
+  color: #0059bb !important;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.hub-hero h1 {
+  margin: 0 0 0.5rem !important;
+  color: #191c1d !important;
+  font-size: clamp(1.75rem, 4vw, 2.6rem) !important;
+  line-height: 1.08;
+}
+
+.hub-hero > p:last-child,
+.hub-topics-heading > p:last-child {
+  margin: 0 !important;
+  color: #5f6672 !important;
+  line-height: 1.5;
+}
+
+.hub-highlights {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 0 0 0.65rem;
+}
+
+.hub-highlight-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #dfe3e8;
+  border-top: 4px solid #0059bb;
+  border-radius: 0.8rem;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(25, 28, 29, 0.055);
+}
+
+.hub-highlight-card:nth-child(2) { border-top-color: #fdc003; }
+.hub-highlight-card:nth-child(3) { border-top-color: #b6152e; }
+.hub-highlight-card:nth-child(4) { border-top-color: #2877cc; }
+
+.hub-highlight-label,
+.hub-highlight-detail {
+  margin: 0 !important;
+  color: #5f6672 !important;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.hub-highlight-label {
+  min-height: 2.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.hub-highlight-value {
+  margin: 0.55rem 0 0.45rem !important;
+  color: #0059bb !important;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: clamp(1.65rem, 3vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.hub-highlight-value.is-text {
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.hub-topics-heading {
+  margin: 2.25rem 0 1rem;
+}
+
+.hub-topics-heading h2 {
+  margin: 0 0 0.35rem !important;
+}
+
+@media (max-width: 850px) {
+  .hub-highlights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .hub-highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .hub-highlight-label {
+    min-height: 0;
+  }
+}
+
 /* Busca de medicamento (barra estilo Google) */
 .st-key-med_busca_hero {
   min-height: 38vh;
@@ -1452,52 +1491,265 @@ section[data-testid="stSidebar"] > div:first-child {
   }
 }
 
-.med-docs {
-  min-height: auto !important;
-  padding: 1.15rem 1.35rem !important;
-  border-left: 4px solid #fdc003;
-  margin: 0.75rem 0 1.25rem 0;
+/* Narrativa progressiva das páginas de análise */
+.historia-intro {
+  max-width: 42rem;
+  margin: 0.45rem 0 1.25rem;
+  color: #5f6672;
+  line-height: 1.55;
 }
 
-.med-docs-titulo {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: 1.2rem;
+.historia-progresso {
+  margin: 0.5rem 0 0.8rem;
+}
+
+.historia-progresso span {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #5f6672;
+  font-size: 0.82rem;
   font-weight: 700;
-  color: #0059bb;
-  margin: 0.15rem 0 0.75rem 0;
+  letter-spacing: 0.02em;
 }
 
-.med-docs-lista {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.9rem 0;
+.historia-progresso > div {
+  height: 0.38rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dfe3e8;
 }
 
-.med-docs-lista li {
-  position: relative;
-  padding: 0.45rem 0 0.45rem 1.85rem;
+.historia-progresso i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0059bb, #2877cc);
+  transition: width 240ms ease;
+}
+
+div[class*='st-key-descoberta_'] {
+  padding: clamp(1rem, 3vw, 1.7rem);
+  border: 1px solid #dfe3e8;
+  border-top: 5px solid #0059bb;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(25, 28, 29, 0.07);
+}
+
+div[class*='st-key-descoberta_'] h2 {
+  margin-top: 0 !important;
+  font-size: clamp(1.45rem, 4vw, 2rem) !important;
+}
+
+.historia-kicker,
+.historia-evidencia {
+  color: #0059bb !important;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.grafico-titulo {
+  margin: 0.25rem 0 0.6rem !important;
+  color: #191c1d !important;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: clamp(1rem, 2.8vw, 1.2rem);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.historia-evidencia {
+  margin: 1rem 0 0 !important;
+  color: #5f6672 !important;
+}
+
+.historia-significado {
+  margin-top: 0.8rem;
+  padding: 0.9rem 1rem;
+  border-left: 4px solid #fdc003;
+  border-radius: 0 0.7rem 0.7rem 0;
+  background: #fff8dd;
+}
+
+.historia-significado strong {
   color: #191c1d;
-  border-bottom: 1px solid rgba(225, 227, 228, 0.9);
 }
 
-.med-docs-lista li:last-child {
-  border-bottom: none;
+.historia-significado p {
+  margin: 0.25rem 0 0 !important;
+  color: #42474e;
+  line-height: 1.5;
 }
 
-.med-docs-lista li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.6rem;
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 50%;
-  background: #fdc003;
-  box-shadow: inset 0 0 0 2px #0059bb;
+.heatmap-ajuda {
+  display: none;
+  margin: 0 0 0.45rem !important;
+  color: #5f6672;
+  font-size: 0.82rem;
 }
 
-.med-docs-nota {
-  margin: 0 !important;
+.historia-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.historia-nav-link {
+  min-height: 3rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #9db5d2;
+  border-radius: 0.5rem;
+  background: #f7f9fc;
+  color: #004493 !important;
   font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none !important;
 }
 
+.historia-nav-link:hover {
+  border-color: #0059bb;
+  background: #e8f0fe;
+  color: #003b7c !important;
+}
+
+.historia-nav-link.primary {
+  border-color: #0059bb;
+  background: #0059bb;
+  color: #ffffff !important;
+}
+
+.historia-nav-link.primary:hover {
+  background: #004493;
+  color: #ffffff !important;
+}
+
+.historia-nav-link.is-disabled {
+  border-color: #c5cad3;
+  background: #e5e8ec;
+  color: #505762 !important;
+  cursor: not-allowed;
+}
+
+/* Botão secundário da história no tema claro. */
+html:has(.pya-flag-claro) div[class*='st-key-anterior_'] button {
+  border: 1px solid #9db5d2 !important;
+  background: #f7f9fc !important;
+  color: #004493 !important;
+  -webkit-text-fill-color: #004493 !important;
+}
+
+html:has(.pya-flag-claro) div[class*='st-key-anterior_'] button * {
+  color: #004493 !important;
+  -webkit-text-fill-color: #004493 !important;
+}
+
+html:has(.pya-flag-claro) div[class*='st-key-anterior_'] button:hover:not(:disabled) {
+  border-color: #0059bb !important;
+  background: #e8f0fe !important;
+}
+
+/* Navegação: o estado desabilitado precisa continuar legível. */
+div[class*='st-key-anterior_historia_'] button:disabled,
+div[class*='st-key-proxima_historia_'] button:disabled {
+  border-color: #c5cad3 !important;
+  background: #e5e8ec !important;
+  color: #505762 !important;
+  -webkit-text-fill-color: #505762 !important;
+  opacity: 1 !important;
+}
+
+div[class*='st-key-anterior_historia_'] button:disabled *,
+div[class*='st-key-proxima_historia_'] button:disabled * {
+  color: #505762 !important;
+  -webkit-text-fill-color: #505762 !important;
+}
+
+@media (max-width: 640px) {
+  [data-testid='stHorizontalBlock']:has(button[kind='primary']) {
+    gap: 0.55rem !important;
+  }
+
+  div[class*='st-key-descoberta_'] {
+    padding: 0.95rem;
+    border-radius: 0.8rem;
+  }
+
+  .historia-nav {
+    grid-template-columns: 1fr;
+  }
+
+  /* Heatmaps densos preservam o tamanho das células e rolam só no eixo X. */
+  div[class*='st-key-heatmap_plot_'] {
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #717786 #e5e8ec;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  div[class*='st-key-heatmap_plot_'] .heatmap-ajuda {
+    display: block;
+  }
+
+  div[class*='st-key-heatmap_plot_'] [data-testid='stPlotlyChart'] {
+    width: 760px !important;
+    min-width: 760px !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+}
+
+/*
+ * Gráficos no celular
+ *
+ * Plotly reduz toda a figura à largura do telefone por padrão. Mantemos os
+ * gestos de navegação e uma barra de rolagem caso algum conteúdo ainda exceda
+ * o contêiner; o layout da figura é compactado no código Python.
+ */
+@media (max-width: 720px) {
+  [data-testid="stPlotlyChart"] {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #9aa0aa transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [data-testid="stPlotlyChart"]::-webkit-scrollbar {
+    height: 0.4rem;
+  }
+
+  [data-testid="stPlotlyChart"]::-webkit-scrollbar-thumb {
+    background: #9aa0aa;
+    border-radius: 9999px;
+  }
+
+  /* Libera o gesto para rolar a página em telas de toque. */
+  [data-testid="stPlotlyChart"] .js-plotly-plot,
+  [data-testid="stPlotlyChart"] .plotly {
+    touch-action: pan-x pan-y !important;
+  }
+
+  /* Tabelas lado a lado também ficavam estreitas demais nessa página. */
+  [data-testid="stHorizontalBlock"]:has([data-testid="stDataFrame"]) {
+    flex-direction: column !important;
+  }
+
+  [data-testid="stHorizontalBlock"]:has([data-testid="stDataFrame"])
+    > [data-testid="stColumn"] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+}

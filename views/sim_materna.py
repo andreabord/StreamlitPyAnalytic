@@ -1,7 +1,5 @@
 """Saúde materna e infantil — gráficos na ordem do notebook."""
 
-import streamlit as st
-
 from charts import sim_materna as graficos
 from data.prepare_sim_materna import load_materna
 from views.common import exige, periodo
@@ -16,6 +14,7 @@ def render() -> None:
         "Saúde materna e infantil",
         f"Residentes de Araranguá · {periodo_txt} · "
         f"{len(infantil)} óbitos infantis · {len(materno)} óbitos maternos",
+        total_descobertas=28,
     )
     _infantil(infantil)
     _materno(materno)
@@ -24,7 +23,6 @@ def render() -> None:
 def _infantil(df) -> None:
     """Blocos do notebook: prematuridade, parto, perfil e assistência."""
     _prematuridade(df)
-    _nota_fetais(df)
     _historico(df)
     _parto(df)
     _perfil(df)
@@ -40,15 +38,6 @@ def _prematuridade(df) -> None:
         graficos.peso_vs_gestacao_inf(df),
         graficos.idade_vs_gestacao_inf(df),
     )
-
-
-def _nota_fetais(df) -> None:
-    """Mesma nota do notebook quando não há óbito fetal."""
-    if "TIPOBITO" not in df.columns:
-        return
-    n = int((df["TIPOBITO"] == "Óbito Fetal").sum())
-    if n == 0:
-        st.caption("Não há registros de óbitos fetais neste recorte.")
 
 
 def _historico(df) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from charts.texto import insight_top, vazio
+from charts.texto import historia_cruzamento, historia_proporcao, historia_volume, n_br, vazio
 from charts.theme import (
     MUTED,
     PRIMARY,
@@ -26,45 +26,58 @@ def proporcao_cc(df: pd.DataFrame, periodo: str):
     fig = bar_horizontal(
         serie, f"Quantidade por centro de custo — {periodo}", mostrar_pct=False, cores=cores
     )
-    return fig, insight_top(serie)
+    return fig, historia_volume(int(serie.sum()), periodo, serie, "unidades por centro de custo")
 
 
 def top_bairros(df: pd.DataFrame, periodo: str):
     """Top 15 bairros por quantidade dispensada."""
     base = df.loc[~df["bairro_malformado"]]
-    serie = (
-        base.groupby("bairro_padronizado")["quantidade"].sum().sort_values(ascending=False).head(15)
-    )
+    bruto = base.groupby("bairro_padronizado")["quantidade"].sum().sort_values(ascending=False)
+    serie = bruto.head(15)
     if serie.empty:
         return vazio()
     fig = bar_horizontal(serie, f"Top 15 bairros por quantidade — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "unidades nos bairros")
 
 
 def menores_bairros(df: pd.DataFrame, periodo: str):
     """Bairros com menor movimento (exclui malformados)."""
     base = df.loc[~df["bairro_malformado"]]
-    serie = (
-        base.groupby("bairro_padronizado")["quantidade"].sum().sort_values(ascending=True).head(15)
-    )
+    bruto = base.groupby("bairro_padronizado")["quantidade"].sum().sort_values(ascending=True)
+    serie = bruto.head(15)
     if serie.empty:
         return vazio()
     fig = bar_horizontal(serie, f"Bairros com menor movimento — {periodo}", mostrar_pct=False)
-    return fig, "Volume baixo pode indicar poucos registros ou população pequena."
+    menor = str(serie.index[0])
+    maior = str(serie.index[-1])
+    return fig, (
+        f"No período {periodo}, o gráfico mostra os {len(serie)} bairros de menor movimento "
+        f"(de {n_br(len(bruto))} com nome válido). "
+        f'O menor é "{menor}" ({n_br(int(serie.iloc[0]))} un.) e, neste recorte, '
+        f'o maior é "{maior}" ({n_br(int(serie.iloc[-1]))} un.).'
+    )
 
 
 def taxa_per_capita(df: pd.DataFrame, periodo: str):
     """Dispensação por mil habitantes (Censo 2022)."""
+    from charts.texto import _num
+
     base = df.loc[df["no_censo"] & ~df["bairro_malformado"]]
     if base.empty:
         return vazio("Sem correspondência com o Censo IBGE para calcular a taxa.")
     agg = base.groupby(["chave_censo", "populacao_bairro"], as_index=False)["quantidade"].sum()
     agg["taxa"] = agg["quantidade"] / agg["populacao_bairro"] * 1000
-    serie = agg.set_index("chave_censo")["taxa"].sort_values(ascending=False).head(20)
+    bruto = agg.set_index("chave_censo")["taxa"].sort_values(ascending=False)
+    serie = bruto.head(20)
     fig = bar_horizontal(
         serie, f"Dispensação por mil hab. (Censo 2022) — {periodo}", mostrar_pct=False
     )
-    return fig, insight_top(serie, "Normaliza o volume pela população do bairro.")
+    lider = str(serie.index[0])
+    return fig, (
+        f"Taxa por mil habitantes (Censo 2022), período {periodo}. "
+        f"O gráfico traz o top {len(serie)} de {n_br(len(bruto))} bairros mapeados. "
+        f'Neste recorte, "{lider}" lidera com {_num(float(serie.iloc[0]))} un./mil hab.'
+    )
 
 
 def custo_por_cc(df: pd.DataFrame, periodo: str):
@@ -74,7 +87,7 @@ def custo_por_cc(df: pd.DataFrame, periodo: str):
     if serie.empty:
         return vazio()
     fig = bar_horizontal(serie, f"Custo total por centro de custo — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    return fig, historia_volume(int(serie.sum()), periodo, serie, "reais de custo")
 
 
 def perfil_tipo_cc(df: pd.DataFrame, periodo: str):
@@ -98,7 +111,7 @@ def perfil_tipo_cc(df: pd.DataFrame, periodo: str):
     fig = barras_empilhadas(
         tabela, f"Perfil de tratamento por centro de custo (%) — {periodo}", horizontal=True
     )
-    return fig, "Cada barra soma ~100% dentro do centro de custo."
+    return fig, historia_proporcao(tabela, f"No período {periodo}, cada centro de custo soma 100% nos tipos de tratamento.")
 
 
 def comparativo_semestres(df: pd.DataFrame, periodo: str):
@@ -121,7 +134,13 @@ def comparativo_semestres(df: pd.DataFrame, periodo: str):
     ordem = tabela.sum(axis=1).sort_values(ascending=False).index
     tabela = tabela.reindex(ordem)
     fig = barras_agrupadas(tabela, f"Top 10 bairros — semestres comparáveis · {periodo}")
-    return fig, "Comparação justa: 5 meses em cada semestre."
+    s1 = tabela.filter(like="S1").sum().sum() if any("S1" in c for c in tabela.columns) else 0
+    s2 = tabela.filter(like="S2").sum().sum() if any("S2" in c for c in tabela.columns) else 0
+    return fig, (
+        f"Comparação justa de 5 meses em cada semestre, período {periodo}. "
+        f"No top 10 bairros, S2/2025 soma {int(s2):,} unidades e S1/2026 soma {int(s1):,}."
+        .replace(",", ".")
+    )
 
 
 def comparativo_semestres_cc(df: pd.DataFrame, periodo: str):
@@ -150,7 +169,15 @@ def comparativo_semestres_cc(df: pd.DataFrame, periodo: str):
     )
     tabela = tabela.reindex(tabela.sum(axis=1).sort_values(ascending=False).index)
     fig = barras_agrupadas(tabela, f"Centros de custo — semestres comparáveis · {periodo}")
-    return fig, "Mesma janela justa de 5 meses aplicada aos centros de custo."
+    return fig, (
+        f"Mesma janela de 5 meses por semestre nos centros de custo ({periodo}). "
+        + historia_volume(
+            int(tabela.values.sum()),
+            periodo,
+            tabela.sum(axis=1),
+            "unidades nos centros",
+        )
+    )
 
 
 def heatmap_bairro_tipo(df: pd.DataFrame, periodo: str):
@@ -188,4 +215,10 @@ def heatmap_bairro_tipo(df: pd.DataFrame, periodo: str):
         "YlGnBu",
         cor_legenda="% no bairro",
     )
-    return fig, "Células escuras: tratamento com peso atípico naquele bairro."
+    cont = pd.crosstab(
+        recorte["bairro_padronizado"],
+        recorte["tipo_tratamento"],
+        values=recorte["quantidade"],
+        aggfunc="sum",
+    ).fillna(0)
+    return fig, historia_cruzamento(cont, "bairro", "tipo de tratamento")

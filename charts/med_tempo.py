@@ -6,13 +6,20 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from charts.texto import insight_top, vazio
+from charts.texto import historia_tendencia, vazio
 from charts.theme import MUTED, PALETTE, PRIMARY, TERTIARY, abrevia, apply_layout
 from data.prepare_med import mes_parcial
 
 _LIMIAR_PCT = 8.0
 _LIMIAR_Z = 2.0
 _DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+_ROTULO_COL = {
+    "material_tipo": ("os", "tipos de material"),
+    "bairro_padronizado": ("os", "bairros"),
+    "centro_custo_nome": ("os", "centros de custo"),
+    "classe_terapeutica": ("as", "classes terapêuticas"),
+    "material_nome_base": ("os", "medicamentos"),
+}
 
 
 def volume_mensal_geral(df: pd.DataFrame, periodo: str):
@@ -22,9 +29,7 @@ def volume_mensal_geral(df: pd.DataFrame, periodo: str):
         return vazio()
     fig = apply_layout(_linha_mensal(mensal, PRIMARY, "Rede"), f"Quantidade total por mês — {periodo}")
     fig.update_yaxes(title="Quantidade")
-    n = int(mensal["relevante"].sum())
-    insight = f"{n} mês(es) com variação ≥ {_LIMIAR_PCT:.0f}%." if n else "Variações mensais dentro de ±8%."
-    return fig, insight
+    return fig, _historia_volume_mensal(df, mensal, periodo)
 
 
 def tendencia_mensal_coluna(
@@ -39,7 +44,11 @@ def tendencia_mensal_coluna(
         mensal = _serie_mensal(df.loc[df[coluna] == nome], metodo=metodo)
         _linha_mensal(mensal, PALETTE[i % len(PALETTE)], abrevia(str(nome), 24), fig=fig)
     titulo = f"Tendência mensal — top {len(ranking)} {coluna.replace('_', ' ')} · {periodo}"
-    return _com_legenda_baixo(apply_layout(fig, titulo)), insight_top(_totais(df, coluna).head(n))
+    totais = _totais(df, coluna).head(n)
+    return (
+        _com_legenda_baixo(apply_layout(fig, titulo)),
+        _historia_grupos(df, coluna, totais, periodo),
+    )
 
 
 def top5_classes_linha(df: pd.DataFrame, periodo: str):
@@ -59,7 +68,10 @@ def top5_classes_linha(df: pd.DataFrame, periodo: str):
             line=dict(color=PALETTE[i % len(PALETTE)], width=2),
         )
     fig = apply_layout(fig, f"Top 5 classes terapêuticas (meses completos) — {periodo}")
-    return _com_legenda_baixo(fig), insight_top(top5)
+    return (
+        _com_legenda_baixo(fig),
+        _historia_grupos(base, "classe_terapeutica", top5, periodo, so_completos=True),
+    )
 
 
 def padrao_diario_rede(df: pd.DataFrame, periodo: str):
@@ -74,13 +86,7 @@ def padrao_diario_rede(df: pd.DataFrame, periodo: str):
     padrao = _traco_semanal(fig, diario)
     fig = apply_layout(fig, f"Padrão diário da rede — {periodo}")
     fig.update_layout(height=560, legend=dict(orientation="h", y=-0.08))
-    uteis = padrao.iloc[:5]
-    insight = (
-        f"Entre dias úteis, pico em {_DIAS[int(uteis.idxmax())]} "
-        f"e vale em {_DIAS[int(uteis.idxmin())]}. "
-        f"{len(anom)} anomalia(s), {len(fer)} possível(is) feriado(s)."
-    )
-    return fig, insight
+    return fig, _historia_padrao_diario(df, periodo, padrao, anom, fer)
 
 
 def tabela_resumo_bairro(df: pd.DataFrame) -> pd.DataFrame:
@@ -94,6 +100,21 @@ def tabela_resumo_bairro(df: pd.DataFrame) -> pd.DataFrame:
     resumo["Participação %"] = (resumo["Total"] / total * 100).round(2)
     resumo.insert(0, "Ranking", range(1, len(resumo) + 1))
     return resumo
+
+
+def historia_ranking_bairros(df: pd.DataFrame, periodo: str) -> str:
+    """História do ranking completo de bairros (tabela)."""
+    from charts.texto import insight_top, n_br
+
+    base = df.loc[~df["bairro_malformado"]]
+    if base.empty:
+        return "Sem bairros válidos neste recorte."
+    serie = base.groupby("bairro_padronizado")["quantidade"].sum().sort_values(ascending=False)
+    return (
+        f"A base tem {n_br(len(base))} dispensações com bairro identificado, "
+        f"no período {periodo}. {insight_top(serie)} "
+        "A tabela abaixo lista o ranking completo."
+    )
 
 
 def tabelas_anomalias(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -127,38 +148,32 @@ def _serie_mensal(df: pd.DataFrame, metodo: str = "bruto") -> pd.DataFrame:
 
 
 def _linha_mensal(mensal, cor, nome, fig=None) -> go.Figure:
-    """Desenha meses completos + parcial (vazado / tracejado)."""
+    """Desenha meses completos + parcial; Δ% vai no traço (some com a legenda)."""
     fig = fig or go.Figure()
     completos = mensal.loc[~mensal["parcial"]]
     parcial = mensal.loc[mensal["parcial"]]
+    textos = [
+        f"{v:+.0f}%" if relevante else ""
+        for v, relevante in zip(completos["variacao_pct"], completos["relevante"])
+    ]
     fig.add_scatter(
         x=completos["ano_mes"],
         y=completos["quantidade"],
-        mode="lines+markers",
+        mode="lines+markers+text",
         name=nome,
+        legendgroup=nome,
+        text=textos,
+        textposition="top center",
+        textfont=dict(size=10, color=cor),
         line=dict(color=cor, width=2.2),
         marker=dict(size=7, color=cor, line=dict(color="white", width=1)),
     )
-    _anotar_variacoes(fig, completos)
-    _ligar_parcial(fig, completos, parcial, cor)
+    _ligar_parcial(fig, completos, parcial, cor, nome)
     return fig
 
 
-def _anotar_variacoes(fig: go.Figure, completos: pd.DataFrame) -> None:
-    """Rótulos Δ% nos meses com variação relevante."""
-    for _, row in completos.loc[completos["relevante"]].iterrows():
-        fig.add_annotation(
-            x=row["ano_mes"],
-            y=row["quantidade"],
-            text=f"{row['variacao_pct']:+.0f}%",
-            showarrow=False,
-            yshift=14,
-            font=dict(size=10, color=TERTIARY if row["variacao_pct"] < 0 else "#2ca02c"),
-        )
-
-
-def _ligar_parcial(fig, completos, parcial, cor) -> None:
-    """Liga o último mês completo ao parcial com linha tracejada."""
+def _ligar_parcial(fig, completos, parcial, cor, nome: str) -> None:
+    """Liga o último mês completo ao parcial (mesmo grupo da legenda)."""
     if parcial.empty or completos.empty:
         return
     fig.add_scatter(
@@ -166,6 +181,7 @@ def _ligar_parcial(fig, completos, parcial, cor) -> None:
         y=list(completos["quantidade"].tail(1)) + list(parcial["quantidade"]),
         mode="lines",
         line=dict(color=cor, width=1.6, dash="dash"),
+        legendgroup=nome,
         showlegend=False,
         opacity=0.55,
     )
@@ -174,6 +190,7 @@ def _ligar_parcial(fig, completos, parcial, cor) -> None:
         y=parcial["quantidade"],
         mode="markers",
         marker=dict(size=9, color="white", line=dict(color=cor, width=2)),
+        legendgroup=nome,
         showlegend=False,
     )
 
@@ -280,3 +297,96 @@ def _totais(df: pd.DataFrame, coluna: str) -> pd.Series:
 def _top_grupos(df: pd.DataFrame, coluna: str, n: int) -> pd.Index:
     """Índice dos n grupos com maior quantidade."""
     return _totais(df, coluna).head(n).index
+
+
+def _historia_volume_mensal(df: pd.DataFrame, mensal: pd.DataFrame, periodo: str) -> str:
+    """História do volume mensal da rede."""
+    from charts.texto import n_br
+
+    total = int(df["quantidade"].sum())
+    n_reg = len(df)
+    completos = mensal.loc[~mensal["parcial"]]
+    if completos.empty:
+        return f"A base tem {n_br(n_reg)} dispensações ({n_br(total)} unidades) no período {periodo}."
+    pico = completos.loc[completos["quantidade_bruta"].idxmax()]
+    vale = completos.loc[completos["quantidade_bruta"].idxmin()]
+    n_var = int(mensal["relevante"].sum())
+    texto = (
+        f"A base tem {n_br(n_reg)} dispensações ({n_br(total)} unidades), no período {periodo}. "
+        f"O maior mês completo foi {pico['ano_mes']} ({n_br(pico['quantidade_bruta'])} unidades) "
+        f"e o menor foi {vale['ano_mes']} ({n_br(vale['quantidade_bruta'])})."
+    )
+    if n_var:
+        texto += (
+            f" Em {n_var} mês(es) a variação frente ao mês anterior passou de "
+            f"{_LIMIAR_PCT:.0f}% (marcados no gráfico)."
+        )
+    else:
+        texto += f" As variações mensais ficaram dentro de ±{_LIMIAR_PCT:.0f}%."
+    return texto
+
+
+def _historia_grupos(
+    df: pd.DataFrame,
+    coluna: str,
+    totais: pd.Series,
+    periodo: str,
+    so_completos: bool = False,
+) -> str:
+    """História narrativa dos top grupos + movimento do líder no tempo."""
+    from charts.texto import n_br
+
+    art, rotulo = _ROTULO_COL.get(coluna, ("os", coluna.replace("_", " ")))
+    n_reg = len(df)
+    total_qtd = int(df["quantidade"].sum())
+    janela = "só meses completos" if so_completos else f"período {periodo}"
+    abertura = (
+        f"A base tem {n_br(n_reg)} dispensações ({n_br(total_qtd)} unidades), {janela}. "
+        f"Entre {art} principais {rotulo}, "
+    )
+    lider = _perfil_lider_mensal(df, coluna, str(totais.index[0]))
+    corpo = historia_tendencia(totais, lider, universo=total_qtd)
+    if corpo and corpo[0].isupper():
+        corpo = corpo[0].lower() + corpo[1:]
+    return abertura + corpo
+
+
+def _historia_padrao_diario(df, periodo, padrao, anom, fer) -> str:
+    """História do padrão semanal e anomalias."""
+    from charts.texto import n_br
+
+    uteis = padrao.iloc[:5]
+    pico, vale = int(uteis.idxmax()), int(uteis.idxmin())
+    texto = (
+        f"No período {periodo}, a rede dispensou {n_br(len(df))} registros. "
+        f"Entre os dias úteis, o volume médio é maior na {_DIAS[pico]} "
+        f"({n_br(uteis.max())} unidades) e menor na {_DIAS[vale]} "
+        f"({n_br(uteis.min())})."
+    )
+    if len(anom):
+        texto += f" Há {n_br(len(anom))} dia(s) com volume fora do padrão (anomalia)."
+    if len(fer):
+        texto += f" Também aparecem {n_br(len(fer))} possível(is) feriado(s) com volume zerado."
+    return texto
+
+
+def _perfil_lider_mensal(df: pd.DataFrame, coluna: str, nome: str) -> dict | None:
+    """Resumo temporal do líder (início, pico e fim) em quantidade bruta."""
+    parte = df.loc[df[coluna] == nome]
+    if parte.empty:
+        return None
+    mensal = (
+        parte.groupby("ano_mes")["quantidade"].sum().sort_index()
+    )
+    if mensal.empty:
+        return None
+    pico = mensal.idxmax()
+    return {
+        "nome": nome,
+        "ini": str(mensal.index[0]),
+        "fim": str(mensal.index[-1]),
+        "pico": str(pico),
+        "n_ini": int(mensal.iloc[0]),
+        "n_fim": int(mensal.iloc[-1]),
+        "n_pico": int(mensal.loc[pico]),
+    }

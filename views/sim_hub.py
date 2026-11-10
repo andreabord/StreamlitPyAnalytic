@@ -4,7 +4,10 @@ import streamlit as st
 
 from catalog import TOPICS_SIM
 from components.carousel import html_analises
+from components.highlights import numero, render_highlights, render_topics
 from components.voltar import faixa_titulo
+from data.kpis import resumo_home
+from data.prepare_sim_retrato import load_retrato
 from views.sim_evitavel import render as render_evitavel
 from views.sim_local import render as render_local
 from views.sim_materna import render as render_materna
@@ -41,8 +44,34 @@ def _visao_geral() -> None:
     """Página central da SIM, de onde saem os temas."""
     with st.container(key="hub_base"):
         faixa_titulo("SIM — Sistema de Informações sobre Mortalidade", "home")
+        _destaques()
+        render_topics()
         _grade()
         _sobre_a_base()
+
+
+def _destaques() -> None:
+    """Quatro leituras rápidas da mortalidade registrada."""
+    df = load_retrato()
+    kpis = resumo_home(df)
+    faixa = _mais_frequente(df, "FAIXA_ETARIA")
+    render_highlights(
+        "O que os registros de mortalidade revelam sobre Araranguá?",
+        f"Residentes de Araranguá · {kpis['periodo']} · Sistema de Informações sobre Mortalidade",
+        [
+            ("Óbitos registrados", numero(kpis["total"]), "no período analisado"),
+            ("Causa mais frequente", kpis["causa"], f"{kpis['pct_causa']:.1f}% dos registros"),
+            ("Faixa etária predominante", faixa, "maior frequência na base"),
+            ("Ocorridos em hospital", f"{kpis['pct_hospital']:.0f}%", "local de ocorrência informado"),
+        ],
+    )
+
+
+def _mais_frequente(df, coluna: str) -> str:
+    """Moda textual segura para um destaque."""
+    serie = df[coluna].dropna().astype(str)
+    serie = serie[~serie.str.lower().isin({"ignorado", "não informado"})]
+    return str(serie.value_counts().index[0]) if not serie.empty else "Sem informação"
 
 
 def _grade() -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 
-from charts.texto import insight_top, vazio
+from charts.texto import historia_volume, vazio
 from charts.theme import (
     PRIMARY,
     TERTIARY,
@@ -52,7 +52,10 @@ def evolucao_mensal(df: pd.DataFrame, periodo: str):
         margin=dict(l=8, r=56, t=56, b=72),
         yaxis2=dict(title="Quantidade (mil)", overlaying="y", side="right"),
     )
-    return fig, "Custo e volume tendem a caminhar juntos ao longo dos meses."
+    return fig, (
+        f"No período {periodo} o custo total foi R$ {df['custo_total'].sum():,.0f} "
+        f"em {len(df):,} dispensações. O gráfico compara custo e quantidade mês a mês."
+    ).replace(",", ".")
 
 
 def top_custo(df: pd.DataFrame, periodo: str):
@@ -66,7 +69,10 @@ def top_custo(df: pd.DataFrame, periodo: str):
     fig = bar_horizontal(plot, f"Top 10 medicamentos por custo — {periodo}", mostrar_pct=False)
     lider = plot.index[0]
     pct = 100 * float(plot.iloc[0]) / total
-    return fig, f'"{lider}" concentra {pct:.1f}% do custo total. Concentração em poucos itens.'
+    return fig, (
+        f"No período {periodo}, \"{lider}\" concentra {pct:.1f}% do custo total "
+        f"(R$ {float(plot.iloc[0]):,.0f}). Os 10 primeiros puxam boa parte do orçamento."
+    ).replace(",", ".")
 
 
 def tabela_outliers(df: pd.DataFrame, criterio: str) -> pd.DataFrame:
@@ -115,30 +121,34 @@ def boxplot_top5_custo(df: pd.DataFrame, periodo: str):
     if not grupos:
         return vazio()
     fig = boxplot(grupos, f"Quantidade por saída — Top 5 em custo · {periodo}")
-    return fig, "Caixas largas = protocolos com retirada variável (ex.: trimestral)."
+    return fig, (
+        f"Entre os 5 itens de maior custo ({periodo}), a mediana e a dispersão da quantidade "
+        f"por saída mostram protocolos mais ou menos regulares."
+    )
 
 
 def top_fabricantes(df: pd.DataFrame, periodo: str):
     """Top 5 fabricantes por custo."""
-    serie = (
-        df.groupby("fabricante_nome")["custo_total"].sum().sort_values(ascending=False).head(5)
-    )
+    bruto = df.groupby("fabricante_nome")["custo_total"].sum().sort_values(ascending=False)
+    serie = bruto.head(5)
     if serie.empty:
         return vazio()
     fig = bar_horizontal(serie, f"Top 5 fabricantes por custo — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "reais de custo por fabricante")
 
 
 def top_classes(df: pd.DataFrame, periodo: str):
     """Top 5 classes terapêuticas por custo."""
-    serie = (
-        df.groupby("classe_terapeutica")["custo_total"].sum().sort_values(ascending=False).head(5)
+    bruto = (
+        df.groupby("classe_terapeutica")["custo_total"].sum().sort_values(ascending=False)
     )
+    serie = bruto.head(5)
     if serie.empty:
         return vazio()
-    serie.index = [abrevia(i, 40) for i in serie.index]
-    fig = bar_horizontal(serie, f"Top 5 classes terapêuticas por custo — {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie, "Terapias contínuas puxam o orçamento.")
+    plot = serie.copy()
+    plot.index = [abrevia(i, 40) for i in plot.index]
+    fig = bar_horizontal(plot, f"Top 5 classes terapêuticas por custo — {periodo}", mostrar_pct=False)
+    return fig, historia_volume(int(bruto.sum()), periodo, serie, "reais de custo por classe")
 
 
 def _agg_med(df: pd.DataFrame) -> pd.DataFrame:

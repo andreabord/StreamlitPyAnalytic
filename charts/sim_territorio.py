@@ -19,19 +19,7 @@ def ranking_absoluto(ano_min: int, ano_max: int, periodo: str):
     fig = bar_horizontal(
         top, f"Top 15 municípios de SC por óbitos — {periodo}", False, cores
     )
-    lugar = posicao(ranking, nome)
-    insight = _insight_ranking(lugar, len(ranking))
-    return fig, insight, ranking
-
-
-def _insight_ranking(lugar: int | None, total: int) -> str:
-    """Texto do ranking absoluto."""
-    if lugar is None:
-        return "Araranguá não foi localizada no ranking absoluto de SC."
-    return (
-        f"Araranguá está na {lugar}ª posição de {total} municípios "
-        "em número absoluto. Cidades maiores sobem no ranking só por população."
-    )
+    return fig, _insight_top_n(ranking, top, nome, "óbitos"), ranking
 
 
 def ranking_taxa(ano_min: int, ano_max: int, periodo: str):
@@ -48,31 +36,54 @@ def ranking_taxa(ano_min: int, ano_max: int, periodo: str):
         False,
         cores,
     )
-    lugar = posicao(taxas, nome)
-    valor = float(taxas.loc[nome]) if nome in taxas.index else 0.0
-    return fig, _insight_taxa(lugar, valor)
-
-
-def _insight_taxa(lugar: int | None, valor: float) -> str:
-    """Texto do ranking por 10 mil habitantes."""
-    if lugar is None:
-        return "Araranguá não foi localizada no ranking normalizado por população."
-    return (
-        f"Normalizado pela população (IBGE 2021), Araranguá vai para a "
-        f"{lugar}ª posição ({valor:.1f} óbitos/10 mil hab./ano)."
+    return fig, _insight_top_n(
+        taxas, top, nome, "óbitos/10 mil hab./ano", normalizado=True
     )
 
 
 def ocorrencia_por_municipio(df: pd.DataFrame, periodo: str):
     """Onde morreram os residentes de Araranguá."""
+    from charts.texto import historia_volume, n_br, pct_br
+
     serie = df["CODMUNOCOR_NOME"].value_counts().head(10)
     fig = bar_horizontal(
         serie, f"Óbitos de residentes de Araranguá por município de ocorrência — {periodo}"
     )
     n_fora = int(df["OCORREU_FORA_RESIDENCIA"].sum())
     pct = 100 * n_fora / len(df) if len(df) else 0
-    insight = (
-        f"{n_fora} de {len(df)} óbitos ({pct:.1f}%) ocorreram em outro município, "
-        "em geral por deslocamento para hospital de maior complexidade."
+    return fig, (
+        historia_volume(len(df), periodo, serie, "óbitos de residentes")
+        + f" Fora do município: {n_br(n_fora)} ({pct_br(pct)}%)."
     )
-    return fig, insight
+
+
+def _insight_top_n(
+    ranking_completo,
+    top,
+    nome: str,
+    unidade: str,
+    normalizado: bool = False,
+) -> str:
+    """Texto alinhado ao top N do gráfico + posição completa de Araranguá."""
+    from charts.texto import _num, n_br
+
+    if top.empty:
+        return "Sem dados para o ranking estadual."
+    lider = top.index[0]
+    topo = float(top.iloc[0])
+    pref = "Normalizado pela população, o " if normalizado else "O "
+    texto = (
+        f"{pref}gráfico mostra o top {len(top)}. "
+        f'Neste recorte, "{lider}" lidera ({_num(topo)} {unidade}).'
+    )
+    lugar = posicao(ranking_completo, nome)
+    if lugar is None:
+        return texto + f" {nome} não foi localizada no ranking completo."
+    valor = float(ranking_completo.loc[nome]) if nome in ranking_completo.index else 0.0
+    texto += (
+        f" No ranking completo ({n_br(len(ranking_completo))} municípios), "
+        f"{nome} está na {lugar}ª posição ({_num(valor)} {unidade})."
+    )
+    if nome not in top.index:
+        texto += f" Por isso {nome} não aparece neste top {len(top)}."
+    return texto

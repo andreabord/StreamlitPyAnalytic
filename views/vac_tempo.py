@@ -1,7 +1,5 @@
 """Aplicações de vacinas ao longo do tempo."""
 
-import streamlit as st
-
 from charts import vac_tempo as graficos
 from data.prepare_vac import load_vac, periodo_vac
 from views.common import exige
@@ -16,14 +14,12 @@ def render() -> None:
         "Como as aplicações mudam ao longo do tempo?",
         f"Araranguá · {periodo} · {len(df):,} registros".replace(",", "."),
         "vacinas",
+        total_descobertas=7,
     )
     secao("Volume mensal", graficos.volume_mensal(df, periodo))
     secao("Influenza e demais vacinas", graficos.influenza_vs_outras(df, periodo))
-    secao("Vacinas mais aplicadas", graficos.top_vacinas_no_tempo(df, periodo))
+    # top_vacinas_no_tempo devolve 2 gráficos (com e sem influenza)
+    secao("Vacinas mais aplicadas", *graficos.top_vacinas_no_tempo(df, periodo))
     secao("Vacinas menos frequentes", graficos.vacinas_menos_frequentes(df, periodo))
     secao("Estratégias no tempo", graficos.estrategias_no_tempo(df, periodo))
     secao("Bairros no tempo", graficos.bairros_no_tempo(df, periodo))
-    st.caption(
-        "Os números são aplicações registradas — não cobertura da população, "
-        "nem diagnóstico de surto ou necessidade de saúde."
-    )

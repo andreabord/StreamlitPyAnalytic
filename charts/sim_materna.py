@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import pandas as pd
 
-from charts.texto import insight_top, vazio
+from charts.texto import (
+    historia_cruzamento,
+    historia_numerica,
+    historia_volume,
+    insight_top,
+    n_br,
+    pct_br,
+    vazio,
+)
 from charts.theme import (
     bar_vertical,
     barras_agrupadas,
@@ -19,15 +27,27 @@ from charts.theme import (
 def idade_infantil(df: pd.DataFrame):
     """Distribuição da idade em anos (exclui 0)."""
     vals = df.loc[df["IDADE_ANOS"] != 0, "IDADE_ANOS"].dropna()
-    return histograma(vals, "Distribuição da idade (anos)"), _n(vals, "óbitos infantis com idade > 0.")
+    return (
+        histograma(vals, "Distribuição da idade (anos)"),
+        historia_numerica(vals, "óbitos infantis com idade acima de 0", "anos"),
+    )
 
 
 def primeiros_meses(df: pd.DataFrame):
     """Óbitos no primeiro ano de vida."""
-    serie = df.loc[df["IDADE_ANOS"] < 1, "IDADE_ANOS"].value_counts().sort_index()
+    base = df.loc[df["IDADE_ANOS"] < 1]
+    serie = base["IDADE_ANOS"].value_counts().sort_index()
     if serie.empty:
         return vazio("Sem óbitos com menos de 1 ano para o recorte.")
-    return linha(serie, "Primeiro ano de vida"), "Concentração no início da vida indica risco neonatal."
+    total = int(serie.sum())
+    lider = serie.idxmax()
+    return (
+        linha(serie, "Primeiro ano de vida"),
+        f"Há {n_br(total)} óbitos com menos de 1 ano. "
+        f"O ponto mais alto é {lider} anos ({n_br(serie.max())} óbitos; "
+        f"{pct_br(100 * serie.max() / total)}% deste recorte), "
+        "o que aponta concentração no período neonatal.",
+    )
 
 
 def peso_vs_gestacao_inf(df: pd.DataFrame):
@@ -43,7 +63,10 @@ def idade_vs_gestacao_inf(df: pd.DataFrame):
 def idade_infantil_completa(df: pd.DataFrame):
     """Histograma de idade incluindo o ano 0."""
     vals = df["IDADE_ANOS"].dropna()
-    return histograma(vals, "Distribuição da idade (anos)"), _n(vals, "óbitos infantis.")
+    return (
+        histograma(vals, "Distribuição da idade (anos)"),
+        historia_numerica(vals, "óbitos infantis", "anos"),
+    )
 
 
 def idade_mae(df: pd.DataFrame):
@@ -51,13 +74,19 @@ def idade_mae(df: pd.DataFrame):
     serie = df["IDADEMAE"].value_counts().sort_index()
     if serie.empty:
         return vazio("Sem idade da mãe preenchida.")
-    return linha(serie, "Contagem por idade da mãe"), insight_top(serie)
+    return (
+        linha(serie, "Contagem por idade da mãe"),
+        historia_volume(int(serie.sum()), "recorte infantil", serie, "óbitos com idade da mãe"),
+    )
 
 
 def semanas_gestacao(df: pd.DataFrame):
     """Histograma de semanas gestacionais."""
     vals = df["SEMAGESTAC"].dropna()
-    return histograma(vals, "Semanas de gestação"), _n(vals, "registros com semana preenchida.")
+    return (
+        histograma(vals, "Semanas de gestação"),
+        historia_numerica(vals, "registros com semana de gestação preenchida", "semanas"),
+    )
 
 
 def idade_por_sexo(df: pd.DataFrame):
@@ -66,7 +95,11 @@ def idade_por_sexo(df: pd.DataFrame):
     if base.empty:
         return vazio()
     fig = histograma_hue(base, "IDADE_ANOS", "SEXO", "Distribuição de idade por sexo")
-    return fig, "Compare o volume entre sexos em cada faixa de idade."
+    cont = base["SEXO"].value_counts()
+    return fig, (
+        f"Há {n_br(len(base))} óbitos com idade e sexo. "
+        + insight_top(cont)
+    )
 
 
 def semanas_por_parto(df: pd.DataFrame):
@@ -75,7 +108,12 @@ def semanas_por_parto(df: pd.DataFrame):
     if base.empty:
         return vazio()
     fig = histograma_hue(base, "SEMAGESTAC", "PARTO", "Semanas de gestação por tipo de parto")
-    return fig, "Prematuridade aparece à esquerda do gráfico."
+    med = base.groupby("PARTO")["SEMAGESTAC"].median().sort_values()
+    trechos = ", ".join(f'"{k}" (mediana {_num_local(v)} semanas)' for k, v in med.items())
+    return fig, (
+        f"Há {n_br(len(base))} registros com semanas e tipo de parto. "
+        f"Medianas: {trechos}."
+    )
 
 
 def parto_vs_momento(df: pd.DataFrame):
@@ -119,7 +157,13 @@ def media_peso_gravidez(df: pd.DataFrame):
     if tabela is None or tabela.empty:
         return vazio()
     fig = barras_agrupadas(tabela.fillna(0), "Média de peso (g) por gravidez e momento do óbito")
-    return fig, "Peso médio menor sugere prematuridade ou restrição de crescimento."
+    flat = tabela.stack().dropna()
+    menor = flat.idxmin()
+    return fig, (
+        f"A menor média de peso é {_num_local(float(flat.min()))} g "
+        f'em "{menor[0]}" × "{menor[1]}"; a maior chega a '
+        f"{_num_local(float(flat.max()))} g."
+    )
 
 
 def momento_obito(df: pd.DataFrame):
@@ -170,7 +214,10 @@ def assist_por_local(df: pd.DataFrame):
 def idade_materna(df: pd.DataFrame):
     """Idade das mulheres no recorte materno."""
     vals = df["IDADE_ANOS"].dropna()
-    return histograma(vals, "Distribuição da idade (óbitos maternos)"), _n(vals, "óbitos maternos.")
+    return (
+        histograma(vals, "Distribuição da idade (óbitos maternos)"),
+        historia_numerica(vals, "óbitos maternos", "anos"),
+    )
 
 
 def idade_materna_linha(df: pd.DataFrame):
@@ -178,7 +225,10 @@ def idade_materna_linha(df: pd.DataFrame):
     serie = df["IDADE_ANOS"].value_counts().sort_index()
     if serie.empty:
         return vazio()
-    return linha(serie, "Idade (óbitos maternos)"), insight_top(serie)
+    return (
+        linha(serie, "Idade (óbitos maternos)"),
+        historia_volume(int(serie.sum()), "recorte materno", serie, "óbitos maternos"),
+    )
 
 
 def _dispersao_menor_um(df, y: str, ylabel: str, title: str):
@@ -192,7 +242,11 @@ def _dispersao(df, x: str, y: str, title: str, xlabel: str, ylabel: str):
     if base.empty:
         return vazio()
     fig = dispersao(base[x], base[y], title, xlabel, ylabel)
-    return fig, f"{len(base)} registros com {xlabel.lower()} e {ylabel.lower()} preenchidos."
+    return fig, (
+        f"Há {n_br(len(base))} registros com {xlabel.lower()} e {ylabel.lower()}. "
+        f"{xlabel} vai de {_num_local(float(base[x].min()))} a {_num_local(float(base[x].max()))}; "
+        f"{ylabel.lower()} de {_num_local(float(base[y].min()))} a {_num_local(float(base[y].max()))}."
+    )
 
 
 def _contagem(df, col: str, title: str):
@@ -202,7 +256,7 @@ def _contagem(df, col: str, title: str):
     serie = df[col].value_counts()
     if serie.empty:
         return vazio()
-    return bar_vertical(serie, title), insight_top(serie)
+    return bar_vertical(serie, title), historia_volume(int(serie.sum()), "recorte", serie, "registros")
 
 
 def _cruzado(df, x: str, hue: str, title: str, horizontal: bool = False):
@@ -211,7 +265,7 @@ def _cruzado(df, x: str, hue: str, title: str, horizontal: bool = False):
     if tabela.empty:
         return vazio()
     fig = barras_agrupadas(tabela, title, horizontal)
-    return fig, insight_top(tabela.sum(axis=1))
+    return fig, historia_cruzamento(tabela, eixo_x=x, eixo_y=hue)
 
 
 def _heatmap(df, linhas: str, colunas: str, title: str):
@@ -219,7 +273,7 @@ def _heatmap(df, linhas: str, colunas: str, title: str):
     tabela = pd.crosstab(df[linhas], df[colunas])
     if tabela.empty:
         return vazio()
-    return heatmap(tabela, title), "Células escuras indicam combinações mais frequentes."
+    return heatmap(tabela, title), historia_cruzamento(tabela, eixo_x=linhas, eixo_y=colunas)
 
 
 def _hist_hue(df, x: str, hue: str, title: str):
@@ -227,11 +281,15 @@ def _hist_hue(df, x: str, hue: str, title: str):
     base = df.dropna(subset=[x, hue])
     if base.empty:
         return vazio()
-    return histograma_hue(base, x, hue, title, 7), f"{len(base)} registros neste cruzamento."
+    cont = base[hue].value_counts()
+    return (
+        histograma_hue(base, x, hue, title, 7),
+        f"Há {n_br(len(base))} registros neste cruzamento. " + insight_top(cont),
+    )
 
 
-def _n(vals, sufixo: str) -> str:
-    """Insight com o tamanho da série."""
-    if vals is None or len(vals) == 0:
-        return "Sem dados para este gráfico."
-    return f"{int(len(vals))} {sufixo}"
+def _num_local(valor: float) -> str:
+    """Número decimal pt-BR."""
+    if abs(valor - round(valor)) < 1e-9:
+        return n_br(round(valor))
+    return f"{valor:.1f}".replace(".", ",")

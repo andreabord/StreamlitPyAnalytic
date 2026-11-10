@@ -14,6 +14,7 @@ def render() -> None:
         "O que as doses revelam sobre o andamento?",
         f"Araranguá · {periodo} · {len(df):,} registros".replace(",", "."),
         "vacinas",
+        total_descobertas=4,
     )
     secao("Textos de dose na base", graficos.ranking_dose_texto(df, periodo))
     secao("Categorias agrupadas", graficos.ranking_dose_grupo(df, periodo))

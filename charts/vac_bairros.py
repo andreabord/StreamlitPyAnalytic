@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from charts.theme import bar_horizontal
-from charts.texto import vazio
+from charts.texto import historia_volume, vazio
 from charts.vac_common import com_data, ranking_barras
 from charts.vac_tempo import bairros_no_tempo
 
@@ -46,14 +46,18 @@ def vacina_lider_por_bairro(df: pd.DataFrame, periodo: str, n_bairros: int = 8):
     )
     lider = tab.loc[tab["Aplicações"].idxmax()]
     insight = (
-        f'Em “{lider["Bairro"]}”, a líder é “{lider["Vacina líder"]}” '
-        f'({lider["Aplicações"]} aplicações).'
+        f"No período {periodo}, cada barra é a vacina líder do bairro "
+        f"(top {len(tab)} bairros). "
+        f'O maior volume é em "{lider["Bairro"]}" com '
+        f'"{lider["Vacina líder"]}" ({lider["Aplicações"]} aplicações).'
     )
     return fig, insight
 
 
 def perfil_influenza_por_bairro(df: pd.DataFrame, periodo: str, n: int = 10):
     """Participação da influenza no total de cada bairro."""
+    from charts.texto import _num
+
     base = com_data(df)
     tops = base["bairro"].value_counts().head(n).index
     base = base.loc[base["bairro"].isin(tops)]
@@ -64,4 +68,11 @@ def perfil_influenza_por_bairro(df: pd.DataFrame, periodo: str, n: int = 10):
         return vazio()
     fig = bar_horizontal(pct, f"% de influenza no total do bairro — {periodo}", mostrar_pct=False)
     fig.update_xaxes(title="% das aplicações do bairro")
-    return fig, f"Média nos bairros exibidos: {pct.mean():.1f}% influenza."
+    maior = pct.index[-1]
+    menor = pct.index[0]
+    return fig, (
+        f"Entre os {len(pct)} bairros com mais aplicações ({periodo}), "
+        f'a maior participação de influenza é em "{maior}" ({_num(float(pct.iloc[-1]))}%) '
+        f'e a menor em "{menor}" ({_num(float(pct.iloc[0]))}%). '
+        f"Média neste recorte: {_num(float(pct.mean()))}%."
+    )

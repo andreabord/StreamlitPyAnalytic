@@ -14,6 +14,7 @@ def render() -> None:
         "Como as dispensações se distribuem entre bairros e centros de custo?",
         f"Farmácia Básica · {periodo} · {len(df):,} registros",
         "medicamentos",
+        total_descobertas=9,
     )
     secao("Centros de custo", graficos.proporcao_cc(df, periodo), graficos.custo_por_cc(df, periodo))
     secao(

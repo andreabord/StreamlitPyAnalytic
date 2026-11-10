@@ -4,7 +4,10 @@ import streamlit as st
 
 from catalog import TOPICS_VAC
 from components.carousel import html_analises
+from components.highlights import numero, render_highlights, render_topics
 from components.voltar import faixa_titulo
+from data.kpis_vac import resumo_home_vac
+from data.prepare_vac import load_vac
 from views.vac_bairros import render as render_bairros
 from views.vac_destaques import render as render_destaques
 from views.vac_doses import render as render_doses
@@ -39,6 +42,8 @@ def _visao_geral() -> None:
     """Página central da base de vacinações."""
     with st.container(key="hub_base"):
         faixa_titulo("Vacinações — Araranguá", "home")
+        _destaques()
+        render_topics()
         st.html(html_analises(TOPICS_VAC))
         st.markdown("## Sobre a base")
         st.markdown(
@@ -54,3 +59,24 @@ def _visao_geral() -> None:
             "origem do registro, lote e validade. O bairro é o da pessoa vacinada — "
             "não a unidade de aplicação. Pacientes estão anonimizados."
         )
+
+
+def _destaques() -> None:
+    """Quatro leituras rápidas das aplicações registradas."""
+    df = load_vac()
+    kpis = resumo_home_vac(df)
+    com_data = df.dropna(subset=["data_aplicacao"])
+    meses = com_data["data_aplicacao"].dt.strftime("%m/%Y").value_counts()
+    bairros = df["bairro"].dropna().astype(str).value_counts()
+    pico = str(meses.index[0]) if not meses.empty else "Sem dados"
+    bairro = str(bairros.index[0]) if not bairros.empty else "Sem dados"
+    render_highlights(
+        "Como está a vacinação registrada em Araranguá?",
+        f"Aplicações em Araranguá · {kpis['periodo']} · dados anonimizados",
+        [
+            ("Aplicações", numero(kpis["total"]), f"{numero(kpis['vacinas'])} vacinas diferentes"),
+            ("Vacina mais aplicada", kpis["top_vacina"], f"{kpis['top_pct']:.1f}% das aplicações com data"),
+            ("Mês com mais registros", pico, "maior volume de aplicações"),
+            ("Bairro com mais registros", bairro, "bairro da pessoa vacinada"),
+        ],
+    )

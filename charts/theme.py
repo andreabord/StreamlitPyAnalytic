@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import textwrap
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -30,12 +32,14 @@ def apply_layout(fig: go.Figure, title: str) -> go.Figure:
     """Aplica fundo limpo, fonte Inter e título."""
     texto = _TEXTO_ESCURO if _escuro() else _TEXTO_CLARO
     grade = _GRADE_ESCURA if _escuro() else _GRADE_CLARA
+    titulo = _titulo_em_linhas(title)
+    linhas_titulo = titulo.count("<br>") + 1
     fig.update_layout(
-        title=title,
+        title=dict(text=titulo, automargin=True),
         font=dict(family="Inter, sans-serif", color=texto, size=13),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=16, r=24, t=56, b=48),
+        margin=dict(l=16, r=24, t=56 + (linhas_titulo - 1) * 22, b=48),
         title_font=dict(family="Hanken Grotesk, sans-serif", size=18, color=texto),
         legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=texto)),
         coloraxis_colorbar=dict(tickfont=dict(color=texto), title_font=dict(color=texto)),
@@ -50,6 +54,20 @@ def apply_layout(fig: go.Figure, title: str) -> go.Figure:
     )
     _titulos_eixo_legiveis(fig)
     return fig
+
+
+def _titulo_em_linhas(title: str) -> str:
+    """Quebra títulos longos em pontos naturais para caberem no celular."""
+    texto = str(title)
+    if len(texto) > 40 and " — " in texto:
+        principal, contexto = texto.split(" — ", 1)
+        partes = [principal, f"— {contexto}"]
+    else:
+        partes = [texto]
+    linhas = []
+    for parte in partes:
+        linhas.extend(textwrap.wrap(parte, width=40, break_long_words=False))
+    return "<br>".join(linhas)
 
 
 def _texto_eixo(eixo) -> str:
@@ -148,13 +166,17 @@ def bar_horizontal(serie, title: str, mostrar_pct: bool = True, cores=None):
     valores = [float(v) for v in serie.values]
     textos = [rotulo(v, total, mostrar_pct) for v in valores]
     xmax = max(valores) if valores else 1.0
+    rotulos_completos = [str(i) for i in serie.index]
+    rotulos_eixo = [abrevia(i, 22) for i in rotulos_completos]
     fig = go.Figure(
         go.Bar(
-            y=[str(i) for i in serie.index],
+            y=rotulos_completos,
             x=valores,
             orientation="h",
             text=textos,
             textposition="outside",
+            customdata=rotulos_completos,
+            hovertemplate="%{customdata}<br>%{x}<extra></extra>",
             marker_color=cores or PRIMARY,
             cliponaxis=False,
         )
@@ -162,18 +184,17 @@ def bar_horizontal(serie, title: str, mostrar_pct: bool = True, cores=None):
     fig.update_yaxes(autorange="reversed")
     fig = apply_layout(fig, title)
     # Esquerda: nomes; direita: "n (xx.x%)" fora da barra
-    esquerda = _margem_esquerda(serie.index)
     pad = 1.42 if mostrar_pct else 1.22
     fig.update_xaxes(range=[0, xmax * pad], automargin=True)
-    fig.update_yaxes(automargin=True)
-    fig.update_layout(margin=dict(l=esquerda, r=108, t=56, b=56))
+    fig.update_yaxes(
+        automargin=False,
+        tickmode="array",
+        tickvals=rotulos_completos,
+        ticktext=rotulos_eixo,
+    )
+    topo = fig.layout.margin.t or 56
+    fig.update_layout(margin=dict(l=150, r=88, t=topo, b=56))
     return fig
-
-
-def _margem_esquerda(rotulos) -> int:
-    """Margem esquerda conforme o maior nome do eixo Y."""
-    maior = max((len(str(r)) for r in rotulos), default=12)
-    return int(max(96, min(240, maior * 8 + 28)))
 
 
 def barras_empilhadas(tabela, title: str, horizontal: bool = False, cores=None):
@@ -210,14 +231,15 @@ def barras_agrupadas(tabela, title: str, horizontal: bool = False):
     return apply_layout(fig, title)
 
 
-def boxplot(grupos: dict, title: str) -> go.Figure:
-    """Caixas sem outliers, uma por categoria."""
+def boxplot(grupos: dict, title: str, cores: list | None = None) -> go.Figure:
+    """Caixas sem outliers, uma por categoria, com suporte a cores distintas."""
     fig = go.Figure()
+    paleta = cores or PALETTE
     for i, (nome, valores) in enumerate(grupos.items()):
         fig.add_box(
             y=list(valores),
             name=str(nome),
-            marker_color=PALETTE[i % len(PALETTE)],
+            marker_color=paleta[i % len(paleta)],
             boxpoints=False,
         )
     return apply_layout(fig, title)
@@ -369,25 +391,42 @@ def _encaixar_heatmap(
     """Abre margem dos rótulos (inclui título de baixo) e trava o zoom."""
     angulo = -35 if n_cols >= 6 else 0
     margem_baixo = 130 if angulo else 80
+    eixo_x_valores = fig.data[0].x
+    eixo_y_valores = fig.data[0].y
+    rotulos_x = [str(v) for v in eixo_x_valores] if eixo_x_valores is not None else []
+    rotulos_y = [str(v) for v in eixo_y_valores] if eixo_y_valores is not None else []
     fig.update_layout(
-        margin=dict(l=110, r=80, t=56, b=margem_baixo),
+        margin=dict(l=150, r=58, t=fig.layout.margin.t or 56, b=margem_baixo),
         dragmode=False,
         height=max(400, min(600, 52 * n_linhas + margem_baixo + 80)),
-        coloraxis_colorbar=dict(title=cor_legenda),
+        coloraxis_colorbar=dict(
+            title=cor_legenda,
+            thickness=14,
+            len=0.82,
+            x=1.02,
+            xpad=4,
+        ),
     )
     fig.update_xaxes(
         title=dict(text=eixo_x or "", standoff=28),
-        automargin=True,
+        automargin=False,
         fixedrange=True,
         tickangle=angulo,
         ticks="outside",
         tickfont=dict(size=10),
+        tickmode="array",
+        tickvals=rotulos_x,
+        ticktext=[abrevia(v, 12) for v in rotulos_x],
     )
     fig.update_yaxes(
         title=dict(text=eixo_y or "", standoff=12),
-        automargin=True,
+        automargin=False,
         fixedrange=True,
         ticks="outside",
+        tickmode="array",
+        tickvals=rotulos_y,
+        ticktext=[abrevia(v, 22) for v in rotulos_y],
+        tickfont=dict(size=10),
     )
 
 
@@ -413,7 +452,7 @@ def _rotulos_heatmap(fig: go.Figure, tabela) -> None:
                     showarrow=False,
                     xref="x",
                     yref="y",
-                    font=dict(color=_cor_rotulo_celula(valor, vmax), size=12),
+                    font=dict(color=_cor_rotulo_celula(valor, vmax), size=9),
                 )
             )
     fig.update_layout(annotations=rotulos)

@@ -13,6 +13,7 @@ def render() -> None:
     cabecalho(
         "Mortalidade evitável e desigualdades sociais",
         f"Residentes de Araranguá · {periodo_txt} · {len(df)} óbitos",
+        total_descobertas=9,
     )
     secao("Perfil demográfico", graficos.raca_por_sexo(df, periodo_txt))
     secao("Distribuição etária", graficos.distribuicao_idade(df, periodo_txt))

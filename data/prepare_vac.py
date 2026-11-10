@@ -13,6 +13,7 @@ _ESTRATEGIA = {
     "Rotina (1)": "Rotina",
     "Pós": "Pós-exposição",
     "Monitoramento das Estratégias de Vacinação": "Monitoramento",
+    "19": "Covid-19",
 }
 
 

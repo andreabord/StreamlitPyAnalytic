@@ -13,11 +13,13 @@ def render() -> None:
     cabecalho(
         "Mortes violentas na comunidade",
         f"Ocorrência em Araranguá · CID V–Y · {periodo_txt} · {len(df)} óbitos",
+        total_descobertas=12,
     )
     secao("Local e idade", graficos.volume_por_local(df, periodo_txt), graficos.idade_por_local(df, periodo_txt))
     secao("Amparo médico", graficos.assistmed_por_local(df, periodo_txt))
     secao("Georreferenciamento", graficos.taxa_sc(periodo_txt))
-    secao("Diagnósticos por ambiente", graficos.top_causas_por_local(df, periodo_txt))
+    # 3 locais com mais óbitos → 3 capítulos no mobile
+    secao("Diagnósticos por ambiente", *graficos.top_causas_por_local(df, periodo_txt))
     _tipos(df, periodo_txt)
 
 

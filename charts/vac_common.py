@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from charts.texto import insight_top, vazio
+from charts.texto import historia_tendencia, n_br, vazio
 from charts.theme import PALETTE, PRIMARY, abrevia, apply_layout, bar_horizontal
 
 
@@ -63,15 +63,18 @@ def linha_mensal_geral(mensal: pd.DataFrame, titulo: str):
     fig.update_yaxes(title="Número de aplicações", rangemode="tozero")
     fig.update_xaxes(title="Mês")
     pico = mensal.loc[mensal["aplicacoes"].idxmax()]
+    vale = mensal.loc[mensal["aplicacoes"].idxmin()]
+    total = int(mensal["aplicacoes"].sum())
     insight = (
-        f"Pico em {pico['mes_label']} ({int(pico['aplicacoes']):,} aplicações)."
-        .replace(",", ".")
+        f"No período foram {n_br(total)} aplicações. "
+        f"O pico foi em {pico['mes_label']} ({n_br(pico['aplicacoes'])}) "
+        f"e o menor mês foi {vale['mes_label']} ({n_br(vale['aplicacoes'])})."
     )
     return apply_layout(fig, titulo), insight
 
 
 def linhas_por_grupo(tab: pd.DataFrame, coluna: str, titulo: str, legenda: str):
-    """Várias linhas mensais (uma por categoria)."""
+    """Várias linhas mensais (uma por categoria do gráfico)."""
     if tab.empty:
         return vazio()
     fig = go.Figure()
@@ -95,17 +98,50 @@ def linhas_por_grupo(tab: pd.DataFrame, coluna: str, titulo: str, legenda: str):
     fig.update_xaxes(title="Mês", categoryorder="array", categoryarray=meses)
     fig.update_layout(legend_title_text=legenda)
     totais = tab.groupby(coluna)["aplicacoes"].sum().sort_values(ascending=False)
-    return apply_layout(fig, titulo), insight_top(totais)
+    lider = str(totais.index[0])
+    parte = tab.loc[tab[coluna] == lider].sort_values("mes_periodo")
+    perfil = None
+    if not parte.empty:
+        pico_i = parte["aplicacoes"].idxmax()
+        perfil = {
+            "nome": lider,
+            "ini": str(parte.iloc[0]["mes_label"]),
+            "fim": str(parte.iloc[-1]["mes_label"]),
+            "pico": str(parte.loc[pico_i, "mes_label"]),
+            "n_ini": int(parte.iloc[0]["aplicacoes"]),
+            "n_fim": int(parte.iloc[-1]["aplicacoes"]),
+            "n_pico": int(parte.loc[pico_i, "aplicacoes"]),
+        }
+    # % só entre as categorias plotadas (top N do gráfico)
+    corpo = historia_tendencia(totais, perfil)
+    return apply_layout(fig, titulo), (
+        f"No gráfico ({len(totais)} categorias): {corpo[0].lower() + corpo[1:]}"
+        if corpo and corpo[0].isupper()
+        else f"No gráfico ({len(totais)} categorias): {corpo}"
+    )
 
 
-def ranking_barras(df: pd.DataFrame, coluna: str, titulo: str, n: int = 10):
+def ranking_barras(
+    df: pd.DataFrame, coluna: str, titulo: str, n: int = 10, periodo: str | None = None
+):
     """Barras horizontais do ranking de aplicações."""
-    serie = com_data(df)[coluna].value_counts().head(n)
+    from charts.texto import historia_volume
+
+    base = com_data(df)
+    serie = base[coluna].value_counts().head(n)
     if serie.empty:
         return vazio()
     fig = bar_horizontal(serie, titulo)
     fig.update_xaxes(title="Número de aplicações")
-    return fig, insight_top(serie)
+    # período: parâmetro explícito ou trecho após "— " no título
+    if not periodo and "— " in titulo:
+        periodo = titulo.split("— ", 1)[1]
+    return fig, historia_volume(
+        len(base),
+        periodo or "o período analisado",
+        serie,
+        "registros de aplicação com data válida",
+    )
 
 
 def _textos_variacao(serie: pd.Series) -> list[str]:

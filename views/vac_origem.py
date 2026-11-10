@@ -14,6 +14,7 @@ def render() -> None:
         "O que a origem do registro revela?",
         f"Araranguá · {periodo} · {len(df):,} registros".replace(",", "."),
         "vacinas",
+        total_descobertas=3,
     )
     secao("Volume por origem", graficos.ranking_origem(df, periodo))
     secao("No tempo", graficos.evolucao_origem(df, periodo))

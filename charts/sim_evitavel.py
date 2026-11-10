@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import pandas as pd
 
-from charts.texto import insight_top, vazio
+from charts.texto import (
+    historia_cruzamento,
+    historia_numerica,
+    historia_proporcao,
+    historia_volume,
+    insight_top,
+    n_br,
+    vazio,
+)
 from charts.theme import (
     abrevia,
     bar_horizontal,
@@ -24,7 +32,7 @@ def raca_por_sexo(df: pd.DataFrame, periodo: str):
         return vazio()
     tabela = pd.crosstab(base["RACACOR"], base["SEXO"])
     fig = barras_empilhadas(tabela, f"Óbitos por raça/cor e sexo — Araranguá, {periodo}")
-    return fig, "Composição demográfica dos óbitos no município."
+    return fig, historia_cruzamento(tabela, "raça/cor", "sexo")
 
 
 def distribuicao_idade(df: pd.DataFrame, periodo: str):
@@ -33,7 +41,10 @@ def distribuicao_idade(df: pd.DataFrame, periodo: str):
     if vals.empty:
         return vazio("Sem idade preenchida.")
     fig = histograma(vals, f"Distribuição de óbitos por idade — Araranguá, {periodo}", nbins=20)
-    return fig, f"{len(vals)} óbitos com idade válida. Concentração em idades avançadas é esperada."
+    return fig, (
+        f"No período {periodo}, "
+        + historia_numerica(vals, "óbitos com idade válida", "anos")
+    )
 
 
 def grupos_causa(df: pd.DataFrame, periodo: str):
@@ -42,7 +53,7 @@ def grupos_causa(df: pd.DataFrame, periodo: str):
     if serie.empty:
         return vazio()
     fig = bar_horizontal(serie, f"Óbitos por grupo de causas — Araranguá, {periodo}")
-    return fig, insight_top(serie, "Circulatório e neoplasias costumam liderar.")
+    return fig, historia_volume(len(df), periodo, serie, "óbitos")
 
 
 def top_causas(df: pd.DataFrame, periodo: str):
@@ -52,7 +63,7 @@ def top_causas(df: pd.DataFrame, periodo: str):
         return vazio()
     serie.index = [abrevia(i, 45) for i in serie.index]
     fig = bar_horizontal(serie, f"Principais causas específicas — Araranguá, {periodo}")
-    return fig, insight_top(serie)
+    return fig, historia_volume(len(df), periodo, serie, "óbitos")
 
 
 def heatmap_raca_esc(df: pd.DataFrame, periodo: str):
@@ -60,7 +71,8 @@ def heatmap_raca_esc(df: pd.DataFrame, periodo: str):
     base = df[(df["ESC2010"] != "Ignorado") & (df["RACACOR"] != "Ignorado")]
     if base.empty:
         return vazio("Sem raça e escolaridade preenchidas.")
-    tabela = pd.crosstab(base["RACACOR"], base["ESC2010"], normalize="all") * 100
+    cont = pd.crosstab(base["RACACOR"], base["ESC2010"])
+    tabela = cont.div(cont.values.sum()) * 100
     tabela = tabela.reindex(columns=[c for c in ORDEM_ESC if c in tabela.columns])
     tabela.columns = [MAPA_ESC_CURTO.get(c, c) for c in tabela.columns]
     tabela.index.name = "RACACOR"
@@ -69,7 +81,7 @@ def heatmap_raca_esc(df: pd.DataFrame, periodo: str):
         tabela.round(1),
         f"Raça/cor × escolaridade (% do total) — Araranguá, {periodo}",
     )
-    return fig, "Células escuras mostram onde se concentra o volume de óbitos."
+    return fig, historia_cruzamento(cont, "raça/cor", "escolaridade")
 
 
 def heatmap_causa_esc(df: pd.DataFrame, periodo: str):
@@ -77,7 +89,8 @@ def heatmap_causa_esc(df: pd.DataFrame, periodo: str):
     base = df[df["ESC2010"] != "Ignorado"]
     if base.empty:
         return vazio("Sem escolaridade preenchida.")
-    tabela = pd.crosstab(base["GRUPO_CAUSA"], base["ESC2010"], normalize="index") * 100
+    cont = pd.crosstab(base["GRUPO_CAUSA"], base["ESC2010"])
+    tabela = cont.div(cont.sum(axis=1), axis=0) * 100
     tabela = tabela.reindex(columns=[c for c in ORDEM_ESC if c in tabela.columns])
     ordem = [g for g in ORDEM_GRUPO_CAUSA if g in tabela.index]
     tabela = tabela.reindex(ordem)
@@ -89,7 +102,9 @@ def heatmap_causa_esc(df: pd.DataFrame, periodo: str):
         f"Grupo de causa × escolaridade (% na causa) — Araranguá, {periodo}",
         "YlGnBu",
     )
-    return fig, "Cada linha soma ~100%: perfil educacional dentro daquela causa."
+    return fig, historia_proporcao(
+        tabela, f"No período {periodo}, cada grupo de causa soma 100% na escolaridade."
+    )
 
 
 def infarto_sexo(df: pd.DataFrame, periodo: str):
@@ -99,7 +114,7 @@ def infarto_sexo(df: pd.DataFrame, periodo: str):
         return vazio("Sem óbitos por infarto no recorte.")
     serie = base["SEXO"].value_counts()
     fig = bar_vertical(serie, f"Infarto por sexo — Araranguá, {periodo}")
-    return fig, insight_top(serie)
+    return fig, historia_volume(len(base), periodo, serie, "óbitos por infarto")
 
 
 def infarto_faixa(df: pd.DataFrame, periodo: str):
@@ -109,7 +124,7 @@ def infarto_faixa(df: pd.DataFrame, periodo: str):
         return vazio("Sem óbitos por infarto com idade.")
     serie = base["FAIXA_INFARTO"].value_counts().reindex(ROTULOS_FAIXAS_INFARTO, fill_value=0)
     fig = bar_vertical(serie, f"Infarto por faixa etária — Araranguá, {periodo}", mostrar_pct=False)
-    return fig, insight_top(serie)
+    return fig, historia_volume(len(base), periodo, serie, "óbitos por infarto")
 
 
 def taxas_territorio(taxas: pd.DataFrame, periodo: str):
@@ -123,7 +138,14 @@ def taxas_territorio(taxas: pd.DataFrame, periodo: str):
         f"Média anual por 100 mil hab. — Ara × Criciúma × SC, {periodo}",
         horizontal=True,
     )
-    return fig, "Normalização pela população do Censo 2022 (IBGE)."
+    # destaca o maior valor absoluto da tabela
+    emp = tabela.stack()
+    (grupo, lugar), valor = emp.idxmax(), float(emp.max())
+    return fig, (
+        f"Taxas médias anuais por 100 mil habitantes (Censo 2022), período {periodo}. "
+        f'O maior valor é {valor:.1f}'.replace(".", ",")
+        + f' em "{grupo}" ({lugar}).'
+    )
 
 
 def _infarto(df: pd.DataFrame) -> pd.DataFrame:

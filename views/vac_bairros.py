@@ -1,7 +1,5 @@
 """Distribuição por bairro da pessoa vacinada."""
 
-import streamlit as st
-
 from charts import vac_bairros as graficos
 from data.prepare_vac import load_vac, periodo_vac
 from views.common import exige
@@ -16,9 +14,7 @@ def render() -> None:
         "Como se distribuem entre os bairros?",
         f"Araranguá · {periodo} · {len(df):,} registros".replace(",", "."),
         "vacinas",
-    )
-    st.caption(
-        "O bairro é o da pessoa vacinada na base — não indica a unidade onde a dose foi aplicada."
+        total_descobertas=4,
     )
     secao("Volume por bairro", graficos.ranking_bairros(df, periodo))
     secao("Tendência dos bairros líderes", graficos.evolucao_top_bairros(df, periodo))
